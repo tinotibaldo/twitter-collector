@@ -15,7 +15,36 @@ const twitterClient = new Twitter({
 	access_token_secret: process.env.twitter_access_token_secret
 });
 const params = { track: process.argv[2] };
+const collectionName = process.argv[2];
+const gender = require('gender-guess');
 const tweetsToProcess = 10;
+
+const extractSourceDevice = (tweet) => {
+    const devices = ["iphone", "android", "windows", "web"];
+    const tweetSource = tweet.source.toLowerCase();
+    let extractedDevice;
+    devices.some((device) => {
+        if (tweetSource.includes(device)) {
+            extractedDevice = device;
+            return true;
+        }
+    });
+    return extractedDevice;
+};
+
+const extractUserGender = (tweet) => {
+    const gender_guess = gender.guess(tweet.user.name);
+    let userGender = 'unknown';
+    if (gender_guess.confidence >= 0.5) {
+        if (gender_guess.gender === 'M') {
+            userGender = 'male';
+        }
+        if (gender_guess.gender === 'F') {
+            userGender = 'female';
+        }
+    }
+    return userGender;
+};
 
 dbConnection(process.env.mongodb_url)
 	.then((db) => {
@@ -32,7 +61,9 @@ dbConnection(process.env.mongodb_url)
 							screen_name: tweet.user.screen_name,
 							description: tweet.user.description,
 							lang: tweet.user.lang,
-							location: tweet.user.location
+							location: tweet.user.location,
+							gender: extractUserGender(tweet),
+							device: extractSourceDevice(tweet)
 						},
 						created_at: tweet.created_at,
 						timestamp_ms: tweet.timestamp_ms
@@ -40,14 +71,15 @@ dbConnection(process.env.mongodb_url)
 					callback(null, document);
 				},
 				(document, callback) => {
+					const collection = db.collection(`tweets_${collectionName}`)
 					async.series({
 						insert: (callback) => {
-							db.collection('tweets').insertOne(document, (error, result) => {
+							collection.insertOne(document, (error, result) => {
 								callback();
 							});
 						},
 						count: (callback) => {
-							db.collection('tweets').count((err, dbCount) => {
+							collection.count((err, dbCount) => {
 								console.log(`Tweets inserted in DB: ${dbCount}.`);
 								callback(null, dbCount);
 							});
@@ -57,7 +89,7 @@ dbConnection(process.env.mongodb_url)
 				}
 			], (error, results) => {
 				if (++count > tweetsToProcess) {
-					console.log(`Process finished: Tweets inserted on this run: ${tweetsToProcess}.\nKeyword/s: "${process.argv[2]}".`);
+					console.log(`Process finished: Tweets inserted on this run: ${count}.\nKeyword/s: "${process.argv[2]}".`);
 					process.exit();
 				}
 			});
