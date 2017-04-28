@@ -1,0 +1,19 @@
+{
+  "name": "twitter-collect",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "saporiti.ignacio@gmail.com",
+  "license": "MIT",
+  "dependencies": {
+    "async": "^2.3.0",
+    "gender-guess": "^1.0.4",
+    "mongodb": "^2.2.26",
+    "sentiment-spanish": "0.0.8",
+    "twitter": "^1.7.0",
+    "watson-developer-cloud": "^2.30.0"
+  }
+}
